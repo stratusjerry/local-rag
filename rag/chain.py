@@ -9,7 +9,7 @@ from collections.abc import Generator
 
 from config.settings import Settings
 from embeddings.embedder import Embedder
-from llm import ollama_client
+from llm.base import LLMClient
 from rag.prompts import build_messages, format_context
 from vectorstore.store import QueryResult, VectorStore
 
@@ -40,6 +40,7 @@ def query_rag(
     query: str,
     embedder: Embedder,
     store: VectorStore,
+    llm_client: LLMClient,
     settings: Settings,
     chat_history: list[dict] | None = None,
 ) -> dict:
@@ -50,6 +51,7 @@ def query_rag(
         query (str): The user's question.
         embedder (Embedder): Embedding provider.
         store (VectorStore): Vector store for retrieval.
+        llm_client (LLMClient): LLM provider for generating answers.
         settings (Settings): Application configuration.
         chat_history (list[dict] | None): Previous conversation messages.
 
@@ -60,9 +62,10 @@ def query_rag(
     context = format_context(results)
     messages = build_messages(query, context, chat_history)
 
-    answer = ollama_client.chat(
+    model = _resolve_model(settings)
+    answer = llm_client.chat(
         messages=messages,
-        model=settings.llm_model,
+        model=model,
         temperature=settings.temperature,
     )
 
@@ -73,6 +76,7 @@ def query_rag_stream(
     query: str,
     embedder: Embedder,
     store: VectorStore,
+    llm_client: LLMClient,
     settings: Settings,
     chat_history: list[dict] | None = None,
 ) -> tuple[Generator[str, None, None], list[QueryResult]]:
@@ -87,6 +91,7 @@ def query_rag_stream(
         query (str): The user's question.
         embedder (Embedder): Embedding provider.
         store (VectorStore): Vector store for retrieval.
+        llm_client (LLMClient): LLM provider for generating answers.
         settings (Settings): Application configuration.
         chat_history (list[dict] | None): Previous conversation messages.
 
@@ -98,10 +103,28 @@ def query_rag_stream(
     context = format_context(results)
     messages = build_messages(query, context, chat_history)
 
-    stream = ollama_client.chat_stream(
+    model = _resolve_model(settings)
+    stream = llm_client.chat_stream(
         messages=messages,
-        model=settings.llm_model,
+        model=model,
         temperature=settings.temperature,
     )
 
     return stream, results
+
+
+def _resolve_model(settings: Settings) -> str:
+    """
+    Return the model identifier based on the active LLM provider.
+
+    Bedrock uses its own model ID field; other providers use llm_model.
+
+    Args:
+        settings (Settings): Application configuration.
+
+    Returns:
+        str: The model identifier to pass to the LLM client.
+    """
+    if settings.llm_provider == "bedrock":
+        return settings.bedrock_model_id
+    return settings.llm_model

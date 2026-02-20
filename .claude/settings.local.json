@@ -3,7 +3,8 @@
     "allow": [
       "Bash(uv pip install --upgrade chromadb)",
       "Bash(.venv/Scripts/python -m pytest tests/ -v)",
-      "Bash(.venv/Scripts/python -m pytest tests/test_loader.py -v)"
+      "Bash(.venv/Scripts/python -m pytest tests/test_loader.py -v)",
+      "Bash(uv pip install openai boto3)"
     ]
   }
 }

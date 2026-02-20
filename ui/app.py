@@ -19,7 +19,8 @@ if _project_root not in sys.path:
 from config.settings import get_settings
 from embeddings.embedder import Embedder, get_embedder
 from ingestion.pipeline import run_ingestion
-from llm import ollama_client
+from llm import get_llm_client
+from llm.base import LLMClient
 from rag.chain import query_rag_stream
 from vectorstore.store import VectorStore
 
@@ -29,6 +30,8 @@ st.set_page_config(
     page_icon="📄",
     layout="wide",
 )
+
+LLM_PROVIDERS = ["ollama", "lmstudio", "bedrock"]
 
 
 # --- Cached resources ---
@@ -62,6 +65,39 @@ def get_store_cached(persist_dir: str, collection_name: str) -> VectorStore:
     return VectorStore(persist_dir=persist_dir, collection_name=collection_name)
 
 
+@st.cache_resource
+def get_llm_cached(
+    provider: str,
+    lmstudio_url: str = "",
+    bedrock_region: str = "",
+    bedrock_access_key: str = "",
+    bedrock_secret_key: str = "",
+    bedrock_session_token: str = "",
+) -> LLMClient:
+    """
+    Create and cache the LLM client to avoid re-initialization on reruns.
+
+    Args:
+        provider (str): LLM provider name.
+        lmstudio_url (str): LM Studio API URL.
+        bedrock_region (str): AWS region for Bedrock.
+        bedrock_access_key (str): AWS access key.
+        bedrock_secret_key (str): AWS secret key.
+        bedrock_session_token (str): AWS session token.
+
+    Returns:
+        LLMClient: Cached LLM client instance.
+    """
+    return get_llm_client(
+        provider=provider,
+        lmstudio_url=lmstudio_url,
+        bedrock_region=bedrock_region,
+        bedrock_access_key=bedrock_access_key,
+        bedrock_secret_key=bedrock_secret_key,
+        bedrock_session_token=bedrock_session_token,
+    )
+
+
 # --- Session state initialization ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -85,12 +121,68 @@ def _render_sidebar() -> None:
             help="Path to the folder containing documents to ingest.",
         )
 
-        # LLM model
-        llm_model = st.text_input(
-            "LLM Model",
-            value=settings.llm_model,
-            help="Ollama model name for chat (e.g., llama3.2).",
+        # --- LLM provider ---
+        llm_provider = st.selectbox(
+            "LLM Provider",
+            options=LLM_PROVIDERS,
+            index=LLM_PROVIDERS.index(settings.llm_provider)
+            if settings.llm_provider in LLM_PROVIDERS
+            else 0,
         )
+
+        # Provider-specific settings
+        llm_model = settings.llm_model
+        lmstudio_url = settings.lmstudio_url
+        bedrock_region = settings.bedrock_region
+        bedrock_model_id = settings.bedrock_model_id
+        bedrock_access_key = settings.bedrock_access_key
+        bedrock_secret_key = settings.bedrock_secret_key
+        bedrock_session_token = settings.bedrock_session_token
+
+        if llm_provider == "ollama":
+            llm_model = st.text_input(
+                "LLM Model",
+                value=settings.llm_model,
+                help="Ollama model name (e.g., llama3.2).",
+            )
+        elif llm_provider == "lmstudio":
+            lmstudio_url = st.text_input(
+                "LM Studio URL",
+                value=settings.lmstudio_url,
+                help="LM Studio API endpoint.",
+            )
+            llm_model = st.text_input(
+                "LLM Model",
+                value=settings.llm_model,
+                help="Model identifier loaded in LM Studio.",
+            )
+        elif llm_provider == "bedrock":
+            bedrock_region = st.text_input(
+                "AWS Region",
+                value=settings.bedrock_region,
+            )
+            bedrock_model_id = st.text_input(
+                "Bedrock Model ID",
+                value=settings.bedrock_model_id,
+                help="e.g., us.anthropic.claude-sonnet-4-5-v1",
+            )
+            bedrock_access_key = st.text_input(
+                "AWS Access Key",
+                value=settings.bedrock_access_key,
+                type="password",
+                help="Leave blank to use default AWS credential chain.",
+            )
+            bedrock_secret_key = st.text_input(
+                "AWS Secret Key",
+                value=settings.bedrock_secret_key,
+                type="password",
+            )
+            bedrock_session_token = st.text_input(
+                "AWS Session Token",
+                value=settings.bedrock_session_token,
+                type="password",
+                help="Optional. For temporary credentials.",
+            )
 
         # Embedding provider
         embedding_provider = st.selectbox(
@@ -119,9 +211,16 @@ def _render_sidebar() -> None:
             "Chunk Overlap", min_value=0, max_value=1000, value=settings.chunk_overlap, step=50
         )
 
-        # Store overrides back into session for use in chat
+        # Store all overrides in session state
         st.session_state.docs_dir = docs_dir
+        st.session_state.llm_provider = llm_provider
         st.session_state.llm_model = llm_model
+        st.session_state.lmstudio_url = lmstudio_url
+        st.session_state.bedrock_region = bedrock_region
+        st.session_state.bedrock_model_id = bedrock_model_id
+        st.session_state.bedrock_access_key = bedrock_access_key
+        st.session_state.bedrock_secret_key = bedrock_secret_key
+        st.session_state.bedrock_session_token = bedrock_session_token
         st.session_state.embedding_provider = embedding_provider
         st.session_state.embedding_model = embedding_model
         st.session_state.top_k = top_k
@@ -130,8 +229,9 @@ def _render_sidebar() -> None:
 
         st.divider()
 
-        # Ollama connectivity check
-        connected, status_msg = ollama_client.check_connectivity()
+        # LLM connectivity check
+        llm_client = _get_current_llm_client()
+        connected, status_msg = llm_client.check_connectivity()
         if connected:
             st.success(status_msg)
         else:
@@ -162,6 +262,24 @@ def _render_sidebar() -> None:
             st.session_state.chunk_count = 0
             st.success("Database cleared.")
             st.rerun()
+
+
+def _get_current_llm_client() -> LLMClient:
+    """
+    Build an LLM client from the current session state settings.
+
+    Returns:
+        LLMClient: The configured LLM client.
+    """
+    provider = st.session_state.get("llm_provider", "ollama")
+    return get_llm_cached(
+        provider=provider,
+        lmstudio_url=st.session_state.get("lmstudio_url", "http://localhost:1234/v1"),
+        bedrock_region=st.session_state.get("bedrock_region", "us-east-1"),
+        bedrock_access_key=st.session_state.get("bedrock_access_key", ""),
+        bedrock_secret_key=st.session_state.get("bedrock_secret_key", ""),
+        bedrock_session_token=st.session_state.get("bedrock_session_token", ""),
+    )
 
 
 def _run_ingestion(settings) -> None:
@@ -245,6 +363,7 @@ def _generate_response(query: str) -> None:
         query (str): The user's question.
     """
     settings = get_settings()
+    settings.llm_provider = st.session_state.get("llm_provider", settings.llm_provider)
     settings.llm_model = st.session_state.get("llm_model", settings.llm_model)
     settings.top_k = st.session_state.get("top_k", settings.top_k)
     settings.embedding_provider = st.session_state.get(
@@ -252,6 +371,9 @@ def _generate_response(query: str) -> None:
     )
     settings.embedding_model = st.session_state.get(
         "embedding_model", settings.embedding_model
+    )
+    settings.bedrock_model_id = st.session_state.get(
+        "bedrock_model_id", settings.bedrock_model_id
     )
 
     embedder = get_embedder_cached(
@@ -276,11 +398,14 @@ def _generate_response(query: str) -> None:
         if m["role"] in ("user", "assistant")
     ]
 
+    llm_client = _get_current_llm_client()
+
     try:
         stream, sources = query_rag_stream(
             query=query,
             embedder=embedder,
             store=store,
+            llm_client=llm_client,
             settings=settings,
             chat_history=chat_history[-10:],  # Limit history to last 10 messages
         )

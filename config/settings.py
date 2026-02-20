@@ -23,11 +23,22 @@ class Settings(BaseSettings):
     collection_name: str = "local_rag"
     embedding_provider: str = "ollama"
     embedding_model: str = "nomic-embed-text"
+    llm_provider: str = "ollama"
     llm_model: str = "llama3.2"
     chunk_size: int = 1000
     chunk_overlap: int = 200
     top_k: int = 5
     temperature: float = 0.7
+
+    # LM Studio
+    lmstudio_url: str = "http://localhost:1234/v1"
+
+    # AWS Bedrock
+    bedrock_region: str = "us-east-1"
+    bedrock_model_id: str = "us.anthropic.claude-sonnet-4-5-v1"
+    bedrock_access_key: str = ""
+    bedrock_secret_key: str = ""
+    bedrock_session_token: str = ""
 
     model_config = {
         "env_prefix": "RAG_",

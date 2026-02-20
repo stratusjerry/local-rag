@@ -107,10 +107,10 @@ class TestRetrieve:
 class TestQueryRag:
     """Tests for the full RAG query chain."""
 
-    @patch("rag.chain.ollama_client")
-    def test_query_rag_returns_answer_and_sources(self, mock_ollama) -> None:
+    def test_query_rag_returns_answer_and_sources(self) -> None:
         """Full RAG query should return answer text and source list."""
-        mock_ollama.chat.return_value = "This is the answer."
+        mock_llm = MagicMock()
+        mock_llm.chat.return_value = "This is the answer."
 
         mock_embedder = MagicMock()
         mock_embedder.embed_query.return_value = [0.1, 0.2, 0.3]
@@ -130,17 +130,18 @@ class TestQueryRag:
             query="What is this about?",
             embedder=mock_embedder,
             store=mock_store,
+            llm_client=mock_llm,
             settings=settings,
         )
 
         assert result["answer"] == "This is the answer."
         assert len(result["sources"]) == 1
-        mock_ollama.chat.assert_called_once()
+        mock_llm.chat.assert_called_once()
 
-    @patch("rag.chain.ollama_client")
-    def test_query_rag_with_no_results(self, mock_ollama) -> None:
+    def test_query_rag_with_no_results(self) -> None:
         """RAG query with no retrieved results should still call the LLM."""
-        mock_ollama.chat.return_value = "I couldn't find relevant information."
+        mock_llm = MagicMock()
+        mock_llm.chat.return_value = "I couldn't find relevant information."
 
         mock_embedder = MagicMock()
         mock_embedder.embed_query.return_value = [0.0, 0.0, 0.0]
@@ -154,8 +155,37 @@ class TestQueryRag:
             query="Unknown question",
             embedder=mock_embedder,
             store=mock_store,
+            llm_client=mock_llm,
             settings=settings,
         )
 
         assert "sources" in result
         assert len(result["sources"]) == 0
+
+    def test_query_rag_bedrock_uses_bedrock_model_id(self) -> None:
+        """Bedrock provider should pass bedrock_model_id as the model."""
+        mock_llm = MagicMock()
+        mock_llm.chat.return_value = "Bedrock answer."
+
+        mock_embedder = MagicMock()
+        mock_embedder.embed_query.return_value = [0.1, 0.2, 0.3]
+
+        mock_store = MagicMock()
+        mock_store.query.return_value = []
+
+        settings = Settings(
+            llm_provider="bedrock",
+            bedrock_model_id="us.anthropic.claude-sonnet-4-5-v1",
+        )
+
+        query_rag(
+            query="Test",
+            embedder=mock_embedder,
+            store=mock_store,
+            llm_client=mock_llm,
+            settings=settings,
+        )
+
+        # Should have been called with the bedrock model ID, not llm_model
+        call_kwargs = mock_llm.chat.call_args
+        assert call_kwargs.kwargs["model"] == "us.anthropic.claude-sonnet-4-5-v1"
