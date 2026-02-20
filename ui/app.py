@@ -338,7 +338,7 @@ def _run_ingestion(settings) -> None:
         progress_bar.progress(current / total, text=f"Processing chunk {current}/{total}")
 
     try:
-        count = run_ingestion(
+        count, load_errors = run_ingestion(
             settings=settings,
             embedder=embedder,
             store=store,
@@ -347,6 +347,10 @@ def _run_ingestion(settings) -> None:
         progress_bar.progress(1.0, text="Ingestion complete!")
         st.session_state.chunk_count = store.count()
         st.success(f"Ingested {count} chunks from documents.")
+        if load_errors:
+            with st.expander(f"{len(load_errors)} file(s) skipped"):
+                for err in load_errors:
+                    st.warning(err)
     except Exception as e:
         st.error(f"Ingestion failed: {e}")
 

@@ -4,6 +4,7 @@ Document loader for extracting text from .docx, .ppt, .pptx, and .txt files.
 Supports loading individual files or entire directories of supported documents.
 """
 
+import logging
 import struct
 from pathlib import Path
 
@@ -11,6 +12,8 @@ import olefile
 from docx import Document as DocxDocument
 from pptx import Presentation
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 SUPPORTED_EXTENSIONS = {".txt", ".docx", ".ppt", ".pptx"}
 
@@ -137,12 +140,57 @@ def _extract_text_from_ppt_stream(stream_bytes: bytes) -> list[str]:
     return texts
 
 
+def _load_ppt_via_ole(file_path: Path) -> list[str]:
+    """
+    Extract text from a .ppt file using olefile's OLE2 parser.
+
+    Args:
+        file_path (Path): Path to the .ppt file.
+
+    Returns:
+        list[str]: Extracted text strings.
+
+    Raises:
+        Exception: If olefile cannot open or parse the file.
+    """
+    ole = olefile.OleFileIO(str(file_path))
+    try:
+        if not ole.exists("PowerPoint Document"):
+            raise ValueError(
+                f"No 'PowerPoint Document' stream found in: {file_path}"
+            )
+        stream_bytes = ole.openstream("PowerPoint Document").read()
+    finally:
+        ole.close()
+
+    return _extract_text_from_ppt_stream(stream_bytes)
+
+
+def _load_ppt_via_raw_scan(file_path: Path) -> list[str]:
+    """
+    Extract text from a .ppt file by scanning the raw bytes.
+
+    Fallback for files where olefile cannot parse the OLE sector table
+    (e.g., truncated files). Scans the entire file for PPT text records,
+    bypassing the OLE container structure entirely.
+
+    Args:
+        file_path (Path): Path to the .ppt file.
+
+    Returns:
+        list[str]: Extracted text strings.
+    """
+    raw = file_path.read_bytes()
+    return _extract_text_from_ppt_stream(raw)
+
+
 def load_ppt(file_path: Path) -> Document:
     """
-    Load a PowerPoint 97-2003 presentation (.ppt) by parsing the OLE2 binary format.
+    Load a PowerPoint 97-2003 presentation (.ppt).
 
-    Opens the file as an OLE2 compound document, reads the "PowerPoint Document"
-    stream, and extracts text from TextCharsAtom and TextBytesAtom records.
+    First attempts structured OLE2 parsing via olefile. If that fails
+    (e.g., incomplete OLE sectors), falls back to a raw binary scan of
+    the file for PPT text records.
 
     Args:
         file_path (Path): Path to the .ppt file.
@@ -152,27 +200,34 @@ def load_ppt(file_path: Path) -> Document:
 
     Raises:
         FileNotFoundError: If the file does not exist.
-        ValueError: If the file is not a valid OLE2 file or lacks a
-            PowerPoint Document stream.
+        ValueError: If no text could be extracted by either method.
     """
     if not file_path.exists():
         raise FileNotFoundError(f"File not found: {file_path}")
 
-    if not olefile.isOleFile(str(file_path)):
-        raise ValueError(f"Not a valid OLE2 file: {file_path}")
+    texts: list[str] = []
 
-    ole = olefile.OleFileIO(str(file_path))
+    # Attempt 1: structured OLE2 parsing
     try:
-        if not ole.exists("PowerPoint Document"):
+        texts = _load_ppt_via_ole(file_path)
+    except Exception as ole_err:
+        # Reason: olefile is strict about sector table integrity. Many
+        # real-world .ppt files have truncated sectors but intact text
+        # records. Fall back to scanning the raw file bytes.
+        logger.debug(
+            "OLE parsing failed for %s (%s), trying raw scan", file_path.name, ole_err
+        )
+        try:
+            texts = _load_ppt_via_raw_scan(file_path)
+        except Exception as raw_err:
             raise ValueError(
-                f"No 'PowerPoint Document' stream found in: {file_path}"
-            )
+                f"Cannot extract text from {file_path}: "
+                f"OLE parse failed ({ole_err}), raw scan failed ({raw_err})"
+            ) from raw_err
 
-        stream_bytes = ole.openstream("PowerPoint Document").read()
-    finally:
-        ole.close()
+    if not texts:
+        raise ValueError(f"No text content found in: {file_path}")
 
-    texts = _extract_text_from_ppt_stream(stream_bytes)
     text = "\n\n".join(texts)
 
     return Document(
@@ -252,15 +307,20 @@ def load_file(file_path: Path) -> Document | None:
     return loader(file_path)
 
 
-def load_directory(directory: Path) -> list[Document]:
+def load_directory(directory: Path) -> tuple[list[Document], list[str]]:
     """
     Load all supported documents from a directory, including subdirectories.
+
+    Skips files that fail to load (e.g., corrupt files) and reports them
+    in the errors list so the caller can inform the user.
 
     Args:
         directory (Path): Path to the directory to scan recursively.
 
     Returns:
-        list[Document]: List of loaded documents.
+        tuple: (documents, errors) where documents is a list of successfully
+            loaded Documents and errors is a list of human-readable error
+            strings for files that could not be loaded.
 
     Raises:
         FileNotFoundError: If the directory does not exist.
@@ -272,10 +332,16 @@ def load_directory(directory: Path) -> list[Document]:
         raise NotADirectoryError(f"Not a directory: {directory}")
 
     documents = []
+    errors = []
     for file_path in sorted(directory.rglob("*")):
         if file_path.is_file() and file_path.suffix.lower() in SUPPORTED_EXTENSIONS:
-            doc = load_file(file_path)
-            if doc and doc.text.strip():
-                documents.append(doc)
+            try:
+                doc = load_file(file_path)
+                if doc and doc.text.strip():
+                    documents.append(doc)
+            except Exception as e:
+                msg = f"Failed to load {file_path.name}: {e}"
+                logger.warning(msg)
+                errors.append(msg)
 
-    return documents
+    return documents, errors

@@ -38,7 +38,7 @@ def run_ingestion(
     embedder: Embedder | None = None,
     store: VectorStore | None = None,
     progress_callback: Callable[[int, int], None] | None = None,
-) -> int:
+) -> tuple[int, list[str]]:
     """
     Run the full ingestion pipeline: load → chunk → embed → store.
 
@@ -50,7 +50,9 @@ def run_ingestion(
             receiving (chunks_processed, total_chunks) for progress tracking.
 
     Returns:
-        int: Total number of chunks ingested.
+        tuple: (chunks_ingested, load_errors) where chunks_ingested is the
+            total number of chunks stored and load_errors is a list of
+            error messages for files that could not be loaded.
 
     Raises:
         FileNotFoundError: If the documents directory does not exist.
@@ -70,9 +72,9 @@ def run_ingestion(
         )
 
     # Step 1: Load documents
-    documents = load_directory(documents_dir)
+    documents, load_errors = load_directory(documents_dir)
     if not documents:
-        return 0
+        return 0, load_errors
 
     # Step 2: Chunk all documents
     all_chunks: list[Chunk] = []
@@ -111,4 +113,4 @@ def run_ingestion(
         if progress_callback:
             progress_callback(batch_end, total)
 
-    return total
+    return total, load_errors

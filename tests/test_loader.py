@@ -142,13 +142,26 @@ class TestLoadPpt:
         with pytest.raises(FileNotFoundError):
             load_ppt(tmp_path / "missing.ppt")
 
-    def test_load_ppt_invalid_file(self, tmp_path: Path) -> None:
-        """Loading a non-OLE2 file as .ppt should raise ValueError."""
-        bad_file = tmp_path / "bad.ppt"
-        bad_file.write_text("this is not a ppt file", encoding="utf-8")
+    def test_load_ppt_no_text_raises(self, tmp_path: Path) -> None:
+        """A file with no extractable text should raise ValueError."""
+        bad_file = tmp_path / "empty.ppt"
+        bad_file.write_bytes(b"\x00" * 64)
 
-        with pytest.raises(ValueError, match="Not a valid OLE2 file"):
+        with pytest.raises(ValueError):
             load_ppt(bad_file)
+
+    def test_load_ppt_raw_fallback(self, tmp_path: Path) -> None:
+        """When OLE parsing fails, text should be extracted via raw scan."""
+        stream_data = _build_ppt_stream(["Recovered text"])
+        # Reason: padding must be a multiple of 8 bytes so the record headers
+        # that follow stay aligned for the raw binary scanner.
+        ppt_file = tmp_path / "truncated.ppt"
+        ppt_file.write_bytes(b"\x00" * 104 + stream_data)
+
+        doc = load_ppt(ppt_file)
+
+        assert "Recovered text" in doc.text
+        assert doc.metadata["file_type"] == ".ppt"
 
 
 class TestLoadFile:
@@ -186,11 +199,12 @@ class TestLoadDirectory:
 
     def test_load_directory_filters_supported(self, tmp_docs_dir: Path) -> None:
         """Test that only supported, non-empty files are loaded."""
-        docs = load_directory(tmp_docs_dir)
+        docs, errors = load_directory(tmp_docs_dir)
 
         # Should load only sample.txt (empty.txt has no content, csv is unsupported)
         assert len(docs) == 1
         assert docs[0].metadata["filename"] == "sample.txt"
+        assert errors == []
 
     def test_load_directory_recurses_subdirs(self, tmp_path: Path) -> None:
         """Test that files in subdirectories are loaded."""
@@ -207,10 +221,26 @@ class TestLoadDirectory:
         deep.mkdir()
         (deep / "deep.txt").write_text("deep content", encoding="utf-8")
 
-        docs = load_directory(tmp_path)
+        docs, errors = load_directory(tmp_path)
 
         filenames = {d.metadata["filename"] for d in docs}
         assert filenames == {"top.txt", "nested.txt", "deep.txt"}
+        assert errors == []
+
+    def test_load_directory_skips_corrupt_files(self, tmp_path: Path) -> None:
+        """Corrupt files should be skipped and reported in errors."""
+        # Good file
+        (tmp_path / "good.txt").write_text("valid content", encoding="utf-8")
+
+        # Bad .ppt file (not a real OLE file, will fail to load)
+        (tmp_path / "corrupt.ppt").write_text("not a real ppt", encoding="utf-8")
+
+        docs, errors = load_directory(tmp_path)
+
+        assert len(docs) == 1
+        assert docs[0].metadata["filename"] == "good.txt"
+        assert len(errors) == 1
+        assert "corrupt.ppt" in errors[0]
 
     def test_load_directory_not_found(self, tmp_path: Path) -> None:
         """Test that a missing directory raises FileNotFoundError."""

@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     collection_name: str = "local_rag"
     embedding_provider: str = "ollama"
     embedding_model: str = "nomic-embed-text"
-    llm_provider: str = "ollama"
+    llm_provider: str = "lmstudio"
     llm_model: str = "llama3.2"
     chunk_size: int = 1000
     chunk_overlap: int = 200
