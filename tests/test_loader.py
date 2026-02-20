@@ -1,14 +1,19 @@
 """Tests for the document loader module."""
 
+import struct
+from io import BytesIO
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from ingestion.loader import (
     SUPPORTED_EXTENSIONS,
     Document,
+    _extract_text_from_ppt_stream,
     load_directory,
     load_file,
+    load_ppt,
     load_txt,
 )
 
@@ -29,6 +34,28 @@ def tmp_docs_dir(tmp_path: Path) -> Path:
     empty_file.write_text("", encoding="utf-8")
 
     return tmp_path
+
+
+def _build_ppt_stream(texts: list[str], record_type: int = 4008) -> bytes:
+    """
+    Build a fake PowerPoint Document binary stream with text records.
+
+    Args:
+        texts: Strings to encode as text records.
+        record_type: 4008 for TextBytesAtom (Latin-1), 4000 for TextCharsAtom (UTF-16LE).
+
+    Returns:
+        bytes: Binary stream data.
+    """
+    stream = b""
+    for text in texts:
+        if record_type == 4000:
+            encoded = text.encode("utf-16-le")
+        else:
+            encoded = text.encode("latin-1")
+        header = struct.pack("<HHL", 0x0000, record_type, len(encoded))
+        stream += header + encoded
+    return stream
 
 
 class TestLoadTxt:
@@ -64,6 +91,66 @@ class TestLoadTxt:
             load_txt(file)
 
 
+class TestExtractTextFromPptStream:
+    """Tests for the low-level PPT binary stream parser."""
+
+    def test_extracts_latin1_text_records(self) -> None:
+        """TextBytesAtom records (type 4008) should be decoded as Latin-1."""
+        stream = _build_ppt_stream(["Hello world", "Second text"], record_type=4008)
+        texts = _extract_text_from_ppt_stream(stream)
+
+        assert texts == ["Hello world", "Second text"]
+
+    def test_extracts_utf16_text_records(self) -> None:
+        """TextCharsAtom records (type 4000) should be decoded as UTF-16LE."""
+        stream = _build_ppt_stream(["Unicode text"], record_type=4000)
+        texts = _extract_text_from_ppt_stream(stream)
+
+        assert texts == ["Unicode text"]
+
+    def test_empty_stream(self) -> None:
+        """An empty stream should produce no text."""
+        assert _extract_text_from_ppt_stream(b"") == []
+
+
+class TestLoadPpt:
+    """Tests for loading .ppt (PowerPoint 97-2003) files."""
+
+    @patch("ingestion.loader.olefile")
+    def test_load_ppt_extracts_text(self, mock_olefile, tmp_path: Path) -> None:
+        """Text should be extracted from a valid .ppt file."""
+        ppt_file = tmp_path / "presentation.ppt"
+        ppt_file.write_bytes(b"dummy")  # File must exist for the existence check
+
+        stream_data = _build_ppt_stream(["Hello from slide one", "Second slide text"])
+        mock_olefile.isOleFile.return_value = True
+        mock_ole_instance = MagicMock()
+        mock_olefile.OleFileIO.return_value = mock_ole_instance
+        mock_ole_instance.exists.return_value = True
+        mock_ole_instance.openstream.return_value = BytesIO(stream_data)
+
+        doc = load_ppt(ppt_file)
+
+        assert isinstance(doc, Document)
+        assert "Hello from slide one" in doc.text
+        assert "Second slide text" in doc.text
+        assert doc.metadata["filename"] == "presentation.ppt"
+        assert doc.metadata["file_type"] == ".ppt"
+
+    def test_load_ppt_nonexistent(self, tmp_path: Path) -> None:
+        """Loading a missing .ppt file should raise FileNotFoundError."""
+        with pytest.raises(FileNotFoundError):
+            load_ppt(tmp_path / "missing.ppt")
+
+    def test_load_ppt_invalid_file(self, tmp_path: Path) -> None:
+        """Loading a non-OLE2 file as .ppt should raise ValueError."""
+        bad_file = tmp_path / "bad.ppt"
+        bad_file.write_text("this is not a ppt file", encoding="utf-8")
+
+        with pytest.raises(ValueError, match="Not a valid OLE2 file"):
+            load_ppt(bad_file)
+
+
 class TestLoadFile:
     """Tests for the generic file loader dispatcher."""
 
@@ -90,6 +177,7 @@ class TestLoadFile:
         """Test that the supported extensions set contains expected types."""
         assert ".txt" in SUPPORTED_EXTENSIONS
         assert ".docx" in SUPPORTED_EXTENSIONS
+        assert ".ppt" in SUPPORTED_EXTENSIONS
         assert ".pptx" in SUPPORTED_EXTENSIONS
 
 

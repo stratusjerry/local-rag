@@ -3,6 +3,7 @@ Setup Plan
 
 Find a public repo of documents to index, include .docx, .ppt, .txt, and possible images (image to text conversion)
 
+- [Library of Congress Powerpoint Dataset](https://tile.loc.gov/storage-services/master/gdc/gdcdatasets/2020445282/2020445282.zip) from https://www.loc.gov/item/2020445282
 
 ### LLM Prompts
 `What public dataset will give me a variety of windows documents like .docx, .ppt, .txt?`
