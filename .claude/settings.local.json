@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv pip install --upgrade chromadb)",
+      "Bash(.venv/Scripts/python -m pytest tests/ -v)"
+    ]
+  }
+}
