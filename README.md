@@ -1,6 +1,6 @@
 # Local RAG
 
-A fully local Retrieval-Augmented Generation system. Ingest `.docx`, `.pptx`, and `.txt` files into a ChromaDB vector store, then query them through a Streamlit chat UI powered by Ollama.
+A fully local Retrieval-Augmented Generation system. Ingest `.docx`, `.ppt`, `.pptx`, and `.txt` files into a ChromaDB vector store, then query them through a Streamlit chat UI powered by Ollama.
 
 Everything runs locally — no data leaves your machine.
 
@@ -40,7 +40,7 @@ cp .env.example .env
 
 ## Usage
 
-1. Place your `.docx`, `.pptx`, and/or `.txt` files in the `files/` directory.
+1. Place your `.docx`, `.ppt`, `.pptx`, and/or `.txt` files in the `files/` directory.
 
 2. Start the app:
 
@@ -81,7 +81,7 @@ Most of these can also be adjusted in the Streamlit sidebar at runtime.
 
 ```
 config/settings.py         — Pydantic settings (single source of truth)
-ingestion/loader.py        — Document text extraction (.docx, .pptx, .txt)
+ingestion/loader.py        — Document text extraction (.docx, .ppt, .pptx, .txt)
 ingestion/chunker.py       — Recursive character text splitting
 ingestion/pipeline.py      — Load → chunk → embed → store orchestration
 vectorstore/store.py       — ChromaDB wrapper

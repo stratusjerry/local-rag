@@ -254,10 +254,10 @@ def load_file(file_path: Path) -> Document | None:
 
 def load_directory(directory: Path) -> list[Document]:
     """
-    Load all supported documents from a directory (non-recursive).
+    Load all supported documents from a directory, including subdirectories.
 
     Args:
-        directory (Path): Path to the directory to scan.
+        directory (Path): Path to the directory to scan recursively.
 
     Returns:
         list[Document]: List of loaded documents.
@@ -272,7 +272,7 @@ def load_directory(directory: Path) -> list[Document]:
         raise NotADirectoryError(f"Not a directory: {directory}")
 
     documents = []
-    for file_path in sorted(directory.iterdir()):
+    for file_path in sorted(directory.rglob("*")):
         if file_path.is_file() and file_path.suffix.lower() in SUPPORTED_EXTENSIONS:
             doc = load_file(file_path)
             if doc and doc.text.strip():

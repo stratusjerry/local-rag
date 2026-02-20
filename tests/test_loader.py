@@ -192,6 +192,26 @@ class TestLoadDirectory:
         assert len(docs) == 1
         assert docs[0].metadata["filename"] == "sample.txt"
 
+    def test_load_directory_recurses_subdirs(self, tmp_path: Path) -> None:
+        """Test that files in subdirectories are loaded."""
+        # Top-level file
+        (tmp_path / "top.txt").write_text("top level", encoding="utf-8")
+
+        # Nested file
+        subdir = tmp_path / "subdir"
+        subdir.mkdir()
+        (subdir / "nested.txt").write_text("nested content", encoding="utf-8")
+
+        # Doubly nested file
+        deep = subdir / "deep"
+        deep.mkdir()
+        (deep / "deep.txt").write_text("deep content", encoding="utf-8")
+
+        docs = load_directory(tmp_path)
+
+        filenames = {d.metadata["filename"] for d in docs}
+        assert filenames == {"top.txt", "nested.txt", "deep.txt"}
+
     def test_load_directory_not_found(self, tmp_path: Path) -> None:
         """Test that a missing directory raises FileNotFoundError."""
         with pytest.raises(FileNotFoundError):
