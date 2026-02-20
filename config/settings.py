@@ -21,8 +21,8 @@ class Settings(BaseSettings):
     documents_dir: str = "files"
     chroma_db_path: str = "output/chromadb"
     collection_name: str = "local_rag"
-    embedding_provider: str = "ollama"
-    embedding_model: str = "nomic-embed-text"
+    embedding_provider: str = "sentence_transformers"
+    embedding_model: str = "all-MiniLM-L6-v2"
     llm_provider: str = "lmstudio"
     llm_model: str = "llama3.2"
     chunk_size: int = 1000
@@ -36,9 +36,7 @@ class Settings(BaseSettings):
     # AWS Bedrock
     bedrock_region: str = "us-east-1"
     bedrock_model_id: str = "us.anthropic.claude-sonnet-4-5-v1"
-    bedrock_access_key: str = ""
-    bedrock_secret_key: str = ""
-    bedrock_session_token: str = ""
+    bedrock_api_key: str = ""
     bedrock_endpoint_url: str = ""
     bedrock_ca_bundle: str = ""
 

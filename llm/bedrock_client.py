@@ -2,13 +2,14 @@
 AWS Bedrock LLM client implementation.
 
 Uses the Bedrock Runtime Converse API to call Claude models hosted
-on AWS. Supports static credentials, default credential chain,
-custom endpoint URLs, and custom CA bundles for isolated regions.
+on AWS. Authenticates via a Bedrock API key passed in the x-api-key
+header. Supports custom endpoint URLs and CA bundles for isolated regions.
 """
 
 from collections.abc import Generator
 
 import boto3
+from botocore import UNSIGNED
 from botocore.config import Config
 
 from llm.base import LLMClient
@@ -46,35 +47,36 @@ def _messages_to_bedrock_format(
     return system_prompts, conversation
 
 
-def _build_boto3_kwargs(
+def _build_bedrock_client(
+    service: str,
     region: str,
-    access_key: str,
-    secret_key: str,
-    session_token: str,
+    api_key: str,
     endpoint_url: str,
     ca_bundle: str,
-) -> dict:
+) -> boto3.client:
     """
-    Build the keyword arguments dict for boto3.client().
+    Build a boto3 client for a Bedrock service.
+
+    When an API key is provided, SigV4 signing is disabled and the key
+    is injected as an x-api-key header on every request. When no API key
+    is provided, the default AWS credential chain is used.
 
     Args:
+        service (str): The boto3 service name ("bedrock-runtime" or "bedrock").
         region (str): AWS region name.
-        access_key (str): AWS access key ID (empty = default chain).
-        secret_key (str): AWS secret access key (empty = default chain).
-        session_token (str): AWS session token (empty = omitted).
+        api_key (str): Bedrock API key (empty = use default AWS credential chain).
         endpoint_url (str): Custom endpoint URL (empty = default).
         ca_bundle (str): Path to a custom CA bundle .pem file (empty = default).
 
     Returns:
-        dict: kwargs ready to pass to boto3.client().
+        boto3.client: Configured boto3 client.
     """
     kwargs: dict = {"region_name": region}
 
-    if access_key and secret_key:
-        kwargs["aws_access_key_id"] = access_key
-        kwargs["aws_secret_access_key"] = secret_key
-        if session_token:
-            kwargs["aws_session_token"] = session_token
+    if api_key:
+        # Reason: Bedrock API key auth replaces SigV4 signing. We disable
+        # signing entirely and inject the key via an event handler.
+        kwargs["config"] = Config(signature_version=UNSIGNED)
 
     if endpoint_url:
         kwargs["endpoint_url"] = endpoint_url
@@ -82,22 +84,28 @@ def _build_boto3_kwargs(
     if ca_bundle:
         kwargs["verify"] = ca_bundle
 
-    return kwargs
+    client = boto3.client(service, **kwargs)
+
+    if api_key:
+        def _inject_api_key(request, **kwargs):
+            request.headers["x-api-key"] = api_key
+
+        client.meta.events.register("before-send", _inject_api_key)
+
+    return client
 
 
 class BedrockLLM(LLMClient):
     """
     LLM client for AWS Bedrock using the Converse API.
 
-    Authenticates via explicit credentials or the default AWS credential
-    chain. Supports custom endpoint URLs and CA bundles for isolated
-    or air-gapped regions.
+    Authenticates via a Bedrock API key (passed as x-api-key header).
+    Falls back to the default AWS credential chain if no key is provided.
+    Supports custom endpoint URLs and CA bundles for isolated regions.
 
     Args:
         region (str): AWS region for the Bedrock endpoint.
-        access_key (str): AWS access key ID. Empty string uses default chain.
-        secret_key (str): AWS secret access key. Empty string uses default chain.
-        session_token (str): Optional AWS session token for temporary credentials.
+        api_key (str): Bedrock API key. Empty string uses default AWS credential chain.
         endpoint_url (str): Custom Bedrock Runtime endpoint URL. Empty uses default.
         ca_bundle (str): Path to a custom CA bundle .pem file. Empty uses system default.
     """
@@ -105,44 +113,41 @@ class BedrockLLM(LLMClient):
     def __init__(
         self,
         region: str = "us-east-1",
-        access_key: str = "",
-        secret_key: str = "",
-        session_token: str = "",
+        api_key: str = "",
         endpoint_url: str = "",
         ca_bundle: str = "",
     ) -> None:
-        self._boto3_kwargs = _build_boto3_kwargs(
+        self._region = region
+        self._api_key = api_key
+        self._endpoint_url = endpoint_url
+        self._ca_bundle = ca_bundle
+        self._client = _build_bedrock_client(
+            service="bedrock-runtime",
             region=region,
-            access_key=access_key,
-            secret_key=secret_key,
-            session_token=session_token,
+            api_key=api_key,
             endpoint_url=endpoint_url,
             ca_bundle=ca_bundle,
         )
-        self._client = boto3.client("bedrock-runtime", **self._boto3_kwargs)
 
     def check_connectivity(self) -> tuple[bool, str]:
         """
         Verify that Bedrock is reachable with the configured credentials.
 
         Makes a lightweight list-foundation-models call to validate access.
-        Uses the same endpoint/CA settings as the runtime client.
+        Uses the same API key and CA settings as the runtime client.
 
         Returns:
             tuple[bool, str]: (is_connected, status_message).
         """
         try:
-            # Reason: bedrock-runtime doesn't have a list/ping endpoint,
-            # so we create a bedrock (control plane) client with the same
-            # connection settings for the connectivity check.
-            control_kwargs = dict(self._boto3_kwargs)
-            # Reason: the control plane endpoint differs from the runtime
-            # endpoint, so we drop endpoint_url and let boto3 resolve it
-            # unless the user is in an isolated region where both share
-            # a custom base URL.
-            control_kwargs.pop("endpoint_url", None)
-            bedrock = boto3.client("bedrock", **control_kwargs)
-            bedrock.list_foundation_models(maxResults=1)
+            control = _build_bedrock_client(
+                service="bedrock",
+                region=self._region,
+                api_key=self._api_key,
+                endpoint_url="",  # Control plane has its own endpoint
+                ca_bundle=self._ca_bundle,
+            )
+            control.list_foundation_models(maxResults=1)
             return True, "AWS Bedrock is connected."
         except Exception as e:
             return False, f"Cannot connect to AWS Bedrock: {e}"

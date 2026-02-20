@@ -12,9 +12,7 @@ def get_llm_client(
     provider: str = "ollama",
     lmstudio_url: str = "http://localhost:1234/v1",
     bedrock_region: str = "us-east-1",
-    bedrock_access_key: str = "",
-    bedrock_secret_key: str = "",
-    bedrock_session_token: str = "",
+    bedrock_api_key: str = "",
     bedrock_endpoint_url: str = "",
     bedrock_ca_bundle: str = "",
 ) -> LLMClient:
@@ -25,9 +23,7 @@ def get_llm_client(
         provider (str): One of "ollama", "lmstudio", or "bedrock".
         lmstudio_url (str): LM Studio API base URL (only used when provider is "lmstudio").
         bedrock_region (str): AWS region (only used when provider is "bedrock").
-        bedrock_access_key (str): AWS access key ID (only used when provider is "bedrock").
-        bedrock_secret_key (str): AWS secret access key (only used when provider is "bedrock").
-        bedrock_session_token (str): AWS session token (only used when provider is "bedrock").
+        bedrock_api_key (str): Bedrock API key (only used when provider is "bedrock").
         bedrock_endpoint_url (str): Custom Bedrock endpoint URL (only used when provider is "bedrock").
         bedrock_ca_bundle (str): Path to custom CA bundle .pem (only used when provider is "bedrock").
 
@@ -52,9 +48,7 @@ def get_llm_client(
 
         return BedrockLLM(
             region=bedrock_region,
-            access_key=bedrock_access_key,
-            secret_key=bedrock_secret_key,
-            session_token=bedrock_session_token,
+            api_key=bedrock_api_key,
             endpoint_url=bedrock_endpoint_url,
             ca_bundle=bedrock_ca_bundle,
         )

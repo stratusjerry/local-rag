@@ -70,9 +70,7 @@ def get_llm_cached(
     provider: str,
     lmstudio_url: str = "",
     bedrock_region: str = "",
-    bedrock_access_key: str = "",
-    bedrock_secret_key: str = "",
-    bedrock_session_token: str = "",
+    bedrock_api_key: str = "",
     bedrock_endpoint_url: str = "",
     bedrock_ca_bundle: str = "",
 ) -> LLMClient:
@@ -83,9 +81,7 @@ def get_llm_cached(
         provider (str): LLM provider name.
         lmstudio_url (str): LM Studio API URL.
         bedrock_region (str): AWS region for Bedrock.
-        bedrock_access_key (str): AWS access key.
-        bedrock_secret_key (str): AWS secret key.
-        bedrock_session_token (str): AWS session token.
+        bedrock_api_key (str): Bedrock API key.
         bedrock_endpoint_url (str): Custom Bedrock endpoint URL.
         bedrock_ca_bundle (str): Path to custom CA bundle .pem file.
 
@@ -96,9 +92,7 @@ def get_llm_cached(
         provider=provider,
         lmstudio_url=lmstudio_url,
         bedrock_region=bedrock_region,
-        bedrock_access_key=bedrock_access_key,
-        bedrock_secret_key=bedrock_secret_key,
-        bedrock_session_token=bedrock_session_token,
+        bedrock_api_key=bedrock_api_key,
         bedrock_endpoint_url=bedrock_endpoint_url,
         bedrock_ca_bundle=bedrock_ca_bundle,
     )
@@ -141,9 +135,7 @@ def _render_sidebar() -> None:
         lmstudio_url = settings.lmstudio_url
         bedrock_region = settings.bedrock_region
         bedrock_model_id = settings.bedrock_model_id
-        bedrock_access_key = settings.bedrock_access_key
-        bedrock_secret_key = settings.bedrock_secret_key
-        bedrock_session_token = settings.bedrock_session_token
+        bedrock_api_key = settings.bedrock_api_key
         bedrock_endpoint_url = settings.bedrock_endpoint_url
         bedrock_ca_bundle = settings.bedrock_ca_bundle
 
@@ -174,22 +166,11 @@ def _render_sidebar() -> None:
                 value=settings.bedrock_model_id,
                 help="e.g., us.anthropic.claude-sonnet-4-5-v1",
             )
-            bedrock_access_key = st.text_input(
-                "AWS Access Key",
-                value=settings.bedrock_access_key,
+            bedrock_api_key = st.text_input(
+                "Bedrock API Key",
+                value=settings.bedrock_api_key,
                 type="password",
                 help="Leave blank to use default AWS credential chain.",
-            )
-            bedrock_secret_key = st.text_input(
-                "AWS Secret Key",
-                value=settings.bedrock_secret_key,
-                type="password",
-            )
-            bedrock_session_token = st.text_input(
-                "AWS Session Token",
-                value=settings.bedrock_session_token,
-                type="password",
-                help="Optional. For temporary credentials.",
             )
             bedrock_endpoint_url = st.text_input(
                 "Custom Endpoint URL",
@@ -236,9 +217,7 @@ def _render_sidebar() -> None:
         st.session_state.lmstudio_url = lmstudio_url
         st.session_state.bedrock_region = bedrock_region
         st.session_state.bedrock_model_id = bedrock_model_id
-        st.session_state.bedrock_access_key = bedrock_access_key
-        st.session_state.bedrock_secret_key = bedrock_secret_key
-        st.session_state.bedrock_session_token = bedrock_session_token
+        st.session_state.bedrock_api_key = bedrock_api_key
         st.session_state.bedrock_endpoint_url = bedrock_endpoint_url
         st.session_state.bedrock_ca_bundle = bedrock_ca_bundle
         st.session_state.embedding_provider = embedding_provider
@@ -296,9 +275,7 @@ def _get_current_llm_client() -> LLMClient:
         provider=provider,
         lmstudio_url=st.session_state.get("lmstudio_url", "http://localhost:1234/v1"),
         bedrock_region=st.session_state.get("bedrock_region", "us-east-1"),
-        bedrock_access_key=st.session_state.get("bedrock_access_key", ""),
-        bedrock_secret_key=st.session_state.get("bedrock_secret_key", ""),
-        bedrock_session_token=st.session_state.get("bedrock_session_token", ""),
+        bedrock_api_key=st.session_state.get("bedrock_api_key", ""),
         bedrock_endpoint_url=st.session_state.get("bedrock_endpoint_url", ""),
         bedrock_ca_bundle=st.session_state.get("bedrock_ca_bundle", ""),
     )
