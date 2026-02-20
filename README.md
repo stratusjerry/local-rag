@@ -75,6 +75,13 @@ RAG_BEDROCK_SESSION_TOKEN=optional-session-token
 
 If `RAG_BEDROCK_ACCESS_KEY` is left blank, the default AWS credential chain is used (environment variables, IAM role, `~/.aws/credentials`).
 
+**Isolated / air-gapped regions:** If your environment uses a custom Certificate Authority or a non-standard endpoint, set:
+
+```bash
+RAG_BEDROCK_ENDPOINT_URL=https://bedrock-runtime.us-iso-east-1.c2s.ic.gov
+RAG_BEDROCK_CA_BUNDLE=/path/to/custom-ca-bundle.pem
+```
+
 ## Configuration
 
 All settings can be configured via environment variables (prefix `RAG_`) or the `.env` file:
@@ -98,6 +105,8 @@ All settings can be configured via environment variables (prefix `RAG_`) or the 
 | `RAG_BEDROCK_ACCESS_KEY` | | AWS access key (blank = default chain) |
 | `RAG_BEDROCK_SECRET_KEY` | | AWS secret key |
 | `RAG_BEDROCK_SESSION_TOKEN` | | AWS session token (optional) |
+| `RAG_BEDROCK_ENDPOINT_URL` | | Custom Bedrock endpoint for isolated regions |
+| `RAG_BEDROCK_CA_BUNDLE` | | Path to custom CA bundle `.pem` file |
 
 Most of these can also be adjusted in the Streamlit sidebar at runtime.
 

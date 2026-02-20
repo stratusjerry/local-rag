@@ -73,6 +73,8 @@ def get_llm_cached(
     bedrock_access_key: str = "",
     bedrock_secret_key: str = "",
     bedrock_session_token: str = "",
+    bedrock_endpoint_url: str = "",
+    bedrock_ca_bundle: str = "",
 ) -> LLMClient:
     """
     Create and cache the LLM client to avoid re-initialization on reruns.
@@ -84,6 +86,8 @@ def get_llm_cached(
         bedrock_access_key (str): AWS access key.
         bedrock_secret_key (str): AWS secret key.
         bedrock_session_token (str): AWS session token.
+        bedrock_endpoint_url (str): Custom Bedrock endpoint URL.
+        bedrock_ca_bundle (str): Path to custom CA bundle .pem file.
 
     Returns:
         LLMClient: Cached LLM client instance.
@@ -95,6 +99,8 @@ def get_llm_cached(
         bedrock_access_key=bedrock_access_key,
         bedrock_secret_key=bedrock_secret_key,
         bedrock_session_token=bedrock_session_token,
+        bedrock_endpoint_url=bedrock_endpoint_url,
+        bedrock_ca_bundle=bedrock_ca_bundle,
     )
 
 
@@ -138,6 +144,8 @@ def _render_sidebar() -> None:
         bedrock_access_key = settings.bedrock_access_key
         bedrock_secret_key = settings.bedrock_secret_key
         bedrock_session_token = settings.bedrock_session_token
+        bedrock_endpoint_url = settings.bedrock_endpoint_url
+        bedrock_ca_bundle = settings.bedrock_ca_bundle
 
         if llm_provider == "ollama":
             llm_model = st.text_input(
@@ -183,6 +191,16 @@ def _render_sidebar() -> None:
                 type="password",
                 help="Optional. For temporary credentials.",
             )
+            bedrock_endpoint_url = st.text_input(
+                "Custom Endpoint URL",
+                value=settings.bedrock_endpoint_url,
+                help="Optional. For isolated/air-gapped regions.",
+            )
+            bedrock_ca_bundle = st.text_input(
+                "Custom CA Bundle Path",
+                value=settings.bedrock_ca_bundle,
+                help="Optional. Path to a .pem CA bundle for custom CAs.",
+            )
 
         # Embedding provider
         embedding_provider = st.selectbox(
@@ -221,6 +239,8 @@ def _render_sidebar() -> None:
         st.session_state.bedrock_access_key = bedrock_access_key
         st.session_state.bedrock_secret_key = bedrock_secret_key
         st.session_state.bedrock_session_token = bedrock_session_token
+        st.session_state.bedrock_endpoint_url = bedrock_endpoint_url
+        st.session_state.bedrock_ca_bundle = bedrock_ca_bundle
         st.session_state.embedding_provider = embedding_provider
         st.session_state.embedding_model = embedding_model
         st.session_state.top_k = top_k
@@ -279,6 +299,8 @@ def _get_current_llm_client() -> LLMClient:
         bedrock_access_key=st.session_state.get("bedrock_access_key", ""),
         bedrock_secret_key=st.session_state.get("bedrock_secret_key", ""),
         bedrock_session_token=st.session_state.get("bedrock_session_token", ""),
+        bedrock_endpoint_url=st.session_state.get("bedrock_endpoint_url", ""),
+        bedrock_ca_bundle=st.session_state.get("bedrock_ca_bundle", ""),
     )
 
 

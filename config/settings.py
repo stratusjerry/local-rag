@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     bedrock_access_key: str = ""
     bedrock_secret_key: str = ""
     bedrock_session_token: str = ""
+    bedrock_endpoint_url: str = ""
+    bedrock_ca_bundle: str = ""
 
     model_config = {
         "env_prefix": "RAG_",
