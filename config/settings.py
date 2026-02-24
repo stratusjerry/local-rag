@@ -35,7 +35,7 @@ class Settings(BaseSettings):
 
     # AWS Bedrock
     bedrock_region: str = "us-east-1"
-    bedrock_model_id: str = "us.anthropic.claude-sonnet-4-5-v1"
+    bedrock_model_id: str = "us.anthropic.claude-sonnet-4-6"
     bedrock_api_key: str = ""
     bedrock_endpoint_url: str = ""
     bedrock_ca_bundle: str = ""

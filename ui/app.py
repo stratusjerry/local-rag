@@ -31,7 +31,7 @@ st.set_page_config(
     layout="wide",
 )
 
-LLM_PROVIDERS = ["ollama", "lmstudio", "bedrock"]
+LLM_PROVIDERS = ["lmstudio", "bedrock", "ollama"]
 
 
 # --- Cached resources ---
@@ -164,7 +164,7 @@ def _render_sidebar() -> None:
             bedrock_model_id = st.text_input(
                 "Bedrock Model ID",
                 value=settings.bedrock_model_id,
-                help="e.g., us.anthropic.claude-sonnet-4-5-v1",
+                help="e.g., us.anthropic.claude-sonnet-4-6",
             )
             bedrock_api_key = st.text_input(
                 "Bedrock API Key",
@@ -172,16 +172,17 @@ def _render_sidebar() -> None:
                 type="password",
                 help="Leave blank to use default AWS credential chain.",
             )
-            bedrock_endpoint_url = st.text_input(
-                "Custom Endpoint URL",
-                value=settings.bedrock_endpoint_url,
-                help="Optional. For isolated/air-gapped regions.",
-            )
-            bedrock_ca_bundle = st.text_input(
-                "Custom CA Bundle Path",
-                value=settings.bedrock_ca_bundle,
-                help="Optional. Path to a .pem CA bundle for custom CAs.",
-            )
+            with st.expander("Advanced Settings"):
+                bedrock_endpoint_url = st.text_input(
+                    "Custom Endpoint URL",
+                    value=settings.bedrock_endpoint_url,
+                    help="Optional. For isolated/air-gapped regions.",
+                )
+                bedrock_ca_bundle = st.text_input(
+                    "Custom CA Bundle Path",
+                    value=settings.bedrock_ca_bundle,
+                    help="Optional. Path to a .pem CA bundle for custom CAs.",
+                )
 
         # Embedding provider
         embedding_provider = st.selectbox(

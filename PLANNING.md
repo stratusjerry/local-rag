@@ -27,7 +27,7 @@ local-rag/
 │   ├── base.py                # LLMClient ABC
 │   ├── ollama_client.py       # Ollama provider
 │   ├── lmstudio_client.py     # LM Studio provider (OpenAI-compatible)
-│   └── bedrock_client.py      # AWS Bedrock provider (Claude 4.5 Sonnet)
+│   └── bedrock_client.py      # AWS Bedrock provider (Claude Sonnet 4.6)
 ├── rag/
 │   ├── chain.py               # RAG pipeline: embed query → retrieve → prompt → LLM
 │   └── prompts.py             # System/user prompt templates

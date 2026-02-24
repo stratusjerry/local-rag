@@ -175,7 +175,7 @@ class TestQueryRag:
 
         settings = Settings(
             llm_provider="bedrock",
-            bedrock_model_id="us.anthropic.claude-sonnet-4-5-v1",
+            bedrock_model_id="us.anthropic.claude-sonnet-4-6",
         )
 
         query_rag(

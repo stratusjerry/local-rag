@@ -2,7 +2,7 @@
 
 A fully local Retrieval-Augmented Generation system. Ingest `.docx`, `.ppt`, `.pptx`, and `.txt` files into a ChromaDB vector store, then query them through a Streamlit chat UI powered by your choice of LLM provider.
 
-Supports three LLM backends: **Ollama** (local), **LM Studio** (local), and **AWS Bedrock** (Claude 4.5 Sonnet).
+Supports three LLM backends: **Ollama** (local), **LM Studio** (local), and **AWS Bedrock** (Claude Sonnet 4.6).
 
 ## Prerequisites
 
@@ -62,18 +62,18 @@ Connects to LM Studio's OpenAI-compatible local API. Set `RAG_LLM_PROVIDER=lmstu
 
 ### AWS Bedrock
 
-Calls Claude 4.5 Sonnet (or other models) via AWS Bedrock. Set `RAG_LLM_PROVIDER=bedrock` and provide your Bedrock API key:
+Calls Claude Sonnet 4.6 (or other models) via AWS Bedrock. Set `RAG_LLM_PROVIDER=bedrock` and provide your Bedrock API key:
 
 ```bash
 RAG_LLM_PROVIDER=bedrock
 RAG_BEDROCK_REGION=us-east-1
-RAG_BEDROCK_MODEL_ID=us.anthropic.claude-sonnet-4-5-v1
+RAG_BEDROCK_MODEL_ID=us.anthropic.claude-sonnet-4-6
 RAG_BEDROCK_API_KEY=your-bedrock-api-key
 ```
 
 If `RAG_BEDROCK_API_KEY` is left blank, the default AWS credential chain is used (environment variables, IAM role, `~/.aws/credentials`).
 
-**Isolated / air-gapped regions:** If your environment uses a custom Certificate Authority or a non-standard endpoint, set:
+**Isolated / air-gapped regions:** If your environment uses a custom Certificate Authority or a non-standard endpoint, set these variables (available under **Advanced Settings** in the sidebar):
 
 ```bash
 RAG_BEDROCK_ENDPOINT_URL=https://bedrock-runtime.us-iso-east-1.c2s.ic.gov
@@ -91,7 +91,7 @@ All settings can be configured via environment variables (prefix `RAG_`) or the 
 | `RAG_COLLECTION_NAME` | `local_rag` | ChromaDB collection name |
 | `RAG_EMBEDDING_PROVIDER` | `ollama` | `ollama` or `sentence_transformers` |
 | `RAG_EMBEDDING_MODEL` | `nomic-embed-text` | Embedding model name |
-| `RAG_LLM_PROVIDER` | `lmstudio` | `ollama`, `lmstudio`, or `bedrock` |
+| `RAG_LLM_PROVIDER` | `lmstudio` | `lmstudio`, `bedrock`, or `ollama` |
 | `RAG_LLM_MODEL` | `llama3.2` | Model name (Ollama / LM Studio) |
 | `RAG_CHUNK_SIZE` | `1000` | Characters per chunk |
 | `RAG_CHUNK_OVERLAP` | `200` | Overlap between chunks |
@@ -99,7 +99,7 @@ All settings can be configured via environment variables (prefix `RAG_`) or the 
 | `RAG_TEMPERATURE` | `0.7` | LLM sampling temperature |
 | `RAG_LMSTUDIO_URL` | `http://localhost:1234/v1` | LM Studio API endpoint |
 | `RAG_BEDROCK_REGION` | `us-east-1` | AWS region |
-| `RAG_BEDROCK_MODEL_ID` | `us.anthropic.claude-sonnet-4-5-v1` | Bedrock model ID |
+| `RAG_BEDROCK_MODEL_ID` | `us.anthropic.claude-sonnet-4-6` | Bedrock model ID |
 | `RAG_BEDROCK_API_KEY` | | Bedrock API key (blank = default AWS chain) |
 | `RAG_BEDROCK_ENDPOINT_URL` | | Custom Bedrock endpoint for isolated regions |
 | `RAG_BEDROCK_CA_BUNDLE` | | Path to custom CA bundle `.pem` file |
@@ -124,7 +124,7 @@ embeddings/embedder.py     — Ollama + SentenceTransformer embedding providers
 llm/base.py               — LLM client ABC
 llm/ollama_client.py      — Ollama LLM provider
 llm/lmstudio_client.py    — LM Studio LLM provider (OpenAI-compatible)
-llm/bedrock_client.py     — AWS Bedrock LLM provider (Claude 4.5 Sonnet)
+llm/bedrock_client.py     — AWS Bedrock LLM provider (Claude Sonnet 4.6)
 rag/chain.py               — RAG query pipeline
 rag/prompts.py             — Prompt templates
 ui/app.py                  — Streamlit chat interface

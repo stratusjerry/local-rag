@@ -18,4 +18,6 @@
 - ChromaDB (v1.5.1) is not compatible with Python 3.14 due to pydantic v1 dependency. Must use Python 3.13.
 - [x] **Add .ppt support** — added `load_ppt()` using `olefile` to parse PowerPoint 97-2003 binary format, extracting text from TextCharsAtom (UTF-16LE) and TextBytesAtom (Latin-1) records (2026-02-20)
 - [x] **Recursive subdirectory support** — `load_directory()` now uses `rglob("*")` to scan nested folders (2026-02-20)
-- [x] **Multi-provider LLM support** — added LLMClient ABC with Ollama, LM Studio, and AWS Bedrock (Claude 4.5 Sonnet) providers. Refactored chain.py and ui/app.py to use provider-agnostic interface (2026-02-20)
+- [x] **Multi-provider LLM support** — added LLMClient ABC with Ollama, LM Studio, and AWS Bedrock (Claude Sonnet 4.6) providers. Refactored chain.py and ui/app.py to use provider-agnostic interface (2026-02-20)
+- [x] **Update default Bedrock model** — changed default model ID to `us.anthropic.claude-sonnet-4-6` (2026-02-23)
+- [x] **Advanced Settings UI** — moved Custom Endpoint URL and Custom CA Bundle into a collapsible "Advanced Settings" expander in the Bedrock sidebar section (2026-02-23)

@@ -88,7 +88,7 @@ def _build_bedrock_client(
 
     if api_key:
         def _inject_api_key(request, **kwargs):
-            request.headers["x-api-key"] = api_key
+            request.headers["Authorization"] = f"Bearer {api_key}"
 
         client.meta.events.register("before-send", _inject_api_key)
 

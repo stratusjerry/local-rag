@@ -20,7 +20,7 @@ def get_llm_client(
     Factory function to create the appropriate LLM client.
 
     Args:
-        provider (str): One of "ollama", "lmstudio", or "bedrock".
+        provider (str): One of "lmstudio", "bedrock", or "ollama".
         lmstudio_url (str): LM Studio API base URL (only used when provider is "lmstudio").
         bedrock_region (str): AWS region (only used when provider is "bedrock").
         bedrock_api_key (str): Bedrock API key (only used when provider is "bedrock").
