@@ -16,6 +16,7 @@ A Retrieval-Augmented Generation (RAG) system that ingests `.docx`, `.ppt`, `.pp
 
 ```
 local-rag/
+├── pyproject.toml              # Project metadata, dependencies, and tool config
 ├── config/settings.py         # Pydantic BaseSettings (env prefix RAG_)
 ├── ingestion/
 │   ├── loader.py              # Extract text from .docx, .ppt, .pptx, .txt
@@ -31,6 +32,11 @@ local-rag/
 ├── rag/
 │   ├── chain.py               # RAG pipeline: embed query → retrieve → prompt → LLM
 │   └── prompts.py             # System/user prompt templates
+├── api/
+│   ├── models.py              # Pydantic schemas (OpenAI Chat Completions format)
+│   ├── routes.py              # /v1/models and /v1/chat/completions handlers
+│   └── server.py              # FastAPI app factory, lifespan, CORS, auth middleware
+├── run_api.py                 # API server entry point (python run_api.py)
 ├── ui/app.py                  # Streamlit entry point
 ├── tests/                     # Pytest unit tests
 ├── files/                     # Drop documents here (gitignored, recursive)
@@ -46,6 +52,7 @@ local-rag/
 5. **Embedder ABC** — `OllamaEmbedder` as primary, `SentenceTransformerEmbedder` as fallback.
 6. **LLMClient ABC** — pluggable LLM backends (Ollama, LM Studio, Bedrock) behind a common interface. The RAG chain and UI are provider-agnostic.
 7. **Recursive file loading** — `load_directory()` scans subdirectories so users can organize documents in folders.
+8. **OpenAI-compatible API** — A FastAPI server exposes the RAG pipeline via `/v1/chat/completions` and `/v1/models`, enabling Open WebUI and other OpenAI-compatible frontends. Ingestion remains in Streamlit; the API is read-only chat.
 
 ## Style Guide
 

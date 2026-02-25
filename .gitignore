@@ -1,6 +1,10 @@
 output/
 files/
 
+# OpenWebUI
+.webui_secret_key
+*.pid
+
 # IDE
 .idea
 .vscode

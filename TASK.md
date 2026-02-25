@@ -13,6 +13,12 @@
 - [x] **Unit tests** — tests for loader, chunker, store, and chain (39 tests passing) (2026-02-20)
 - [x] **Documentation** — PLANNING.md, TASK.md, README.md (2026-02-20)
 
+## In Progress
+
+- [x] **Open WebUI frontend support** — expose the RAG pipeline via a FastAPI-compatible API so Open WebUI can be used as an alternative frontend to Streamlit (2026-02-24)
+
+- [x] **Migrate to pyproject.toml** — replaced requirements.txt with uv-managed pyproject.toml using dependency groups (core, ui, openwebui, dev). Updated README.md, PLANNING.md, and launch_openwebui_rag.py. (2026-02-25)
+
 ## Discovered During Work
 
 - ChromaDB (v1.5.1) is not compatible with Python 3.14 due to pydantic v1 dependency. Must use Python 3.13.
@@ -21,3 +27,4 @@
 - [x] **Multi-provider LLM support** — added LLMClient ABC with Ollama, LM Studio, and AWS Bedrock (Claude Sonnet 4.6) providers. Refactored chain.py and ui/app.py to use provider-agnostic interface (2026-02-20)
 - [x] **Update default Bedrock model** — changed default model ID to `us.anthropic.claude-sonnet-4-6` (2026-02-23)
 - [x] **Advanced Settings UI** — moved Custom Endpoint URL and Custom CA Bundle into a collapsible "Advanced Settings" expander in the Bedrock sidebar section (2026-02-23)
+- [x] **Fix Bedrock model ID test assertion** — updated test_query_rag_bedrock_uses_bedrock_model_id to match current default model ID (us.anthropic.claude-sonnet-4-6) (2026-02-25)

@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     # LM Studio
     lmstudio_url: str = "http://localhost:1234/v1"
 
+    # API server
+    api_host: str = "0.0.0.0"
+    api_port: int = 8000
+    api_key: str = ""
+
     # AWS Bedrock
     bedrock_region: str = "us-east-1"
     bedrock_model_id: str = "us.anthropic.claude-sonnet-4-6"

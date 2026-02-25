@@ -188,4 +188,4 @@ class TestQueryRag:
 
         # Should have been called with the bedrock model ID, not llm_model
         call_kwargs = mock_llm.chat.call_args
-        assert call_kwargs.kwargs["model"] == "us.anthropic.claude-sonnet-4-5-v1"
+        assert call_kwargs.kwargs["model"] == "us.anthropic.claude-sonnet-4-6"

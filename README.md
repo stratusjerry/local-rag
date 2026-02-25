@@ -16,16 +16,18 @@ Supports three LLM backends: **Ollama** (local), **LM Studio** (local), and **AW
 ## Setup
 
 ```bash
-# Create virtual environment
+# Create virtual environment and install core dependencies
 uv venv --python 3.13
+uv sync
 
-# Activate it
-source .venv/Scripts/activate   # Windows (Git Bash)
-# or: .venv\Scripts\activate    # Windows (CMD)
-# or: source .venv/bin/activate # macOS/Linux
+# Optional: install Streamlit UI
+uv sync --group ui
 
-# Install dependencies
-uv pip install -r requirements.txt
+# Optional: install Open WebUI
+uv sync --group openwebui
+
+# Optional: install dev/test dependencies
+uv sync --group dev
 ```
 
 Copy the example environment file and adjust if needed:
@@ -80,6 +82,72 @@ RAG_BEDROCK_ENDPOINT_URL=https://bedrock-runtime.us-iso-east-1.c2s.ic.gov
 RAG_BEDROCK_CA_BUNDLE=/path/to/custom-ca-bundle.pem
 ```
 
+## Open WebUI Integration
+
+The RAG pipeline can be accessed via an OpenAI-compatible API, allowing [Open WebUI](https://github.com/open-webui/open-webui) (or any OpenAI-compatible client) to use it as a backend.
+
+### Install Open WebUI
+
+```bash
+uv sync --group openwebui
+```
+
+### Quick Start (launch script)
+
+The included `launch.py` script starts both the RAG API server and Open WebUI in one command:
+
+```bash
+python launch_openwebui_rag.py            # start both services (Ctrl+C to stop)
+python launch_openwebui_rag.py --stop     # stop both services
+```
+
+By default the RAG API runs on port **8000** and Open WebUI on port **3000**. Override with environment variables:
+
+```bash
+RAG_API_PORT=9000 OPEN_WEBUI_PORT=4000 python launch_openwebui_rag.py
+```
+
+### Manual Start
+
+Start each service separately if you prefer:
+
+```bash
+# Terminal 1 — RAG API server
+python run_api.py
+
+# Terminal 2 — Open WebUI
+open-webui serve --port 3000
+```
+
+The API server starts on `http://localhost:8000` by default. Customize the host, port, and optional API key in `.env`:
+
+```bash
+RAG_API_HOST=0.0.0.0
+RAG_API_PORT=8000
+RAG_API_KEY=my-secret-key  # leave blank to disable auth
+```
+
+### Connect Open WebUI to the RAG API
+
+1. Open `http://localhost:3000` in your browser
+2. Create an account (the first user becomes admin)
+3. Go to **Settings → Connections**
+4. Add a new OpenAI-compatible connection:
+   - **URL:** `http://localhost:8000/v1`
+   - **Key:** leave blank, or enter your `RAG_API_KEY` if you set one
+5. The model will appear as `local-rag (<provider>)` (e.g., `local-rag (lmstudio)`)
+6. Select it in the chat and start querying your documents
+
+### API Endpoints
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/health` | GET | Health check |
+| `/v1/models` | GET | List available models |
+| `/v1/chat/completions` | POST | Chat completions (streaming and non-streaming) |
+
+> **Note:** Documents must be ingested via the Streamlit UI (`streamlit run ui/app.py`) before querying through the API.
+
 ## Configuration
 
 All settings can be configured via environment variables (prefix `RAG_`) or the `.env` file:
@@ -97,6 +165,9 @@ All settings can be configured via environment variables (prefix `RAG_`) or the 
 | `RAG_CHUNK_OVERLAP` | `200` | Overlap between chunks |
 | `RAG_TOP_K` | `5` | Number of results to retrieve |
 | `RAG_TEMPERATURE` | `0.7` | LLM sampling temperature |
+| `RAG_API_HOST` | `0.0.0.0` | API server bind address |
+| `RAG_API_PORT` | `8000` | API server port |
+| `RAG_API_KEY` | | API Bearer token (blank = no auth) |
 | `RAG_LMSTUDIO_URL` | `http://localhost:1234/v1` | LM Studio API endpoint |
 | `RAG_BEDROCK_REGION` | `us-east-1` | AWS region |
 | `RAG_BEDROCK_MODEL_ID` | `us.anthropic.claude-sonnet-4-6` | Bedrock model ID |
@@ -109,7 +180,8 @@ Most of these can also be adjusted in the Streamlit sidebar at runtime.
 ## Running Tests
 
 ```bash
-.venv/Scripts/python -m pytest tests/ -v
+uv sync --group dev
+uv run pytest tests/ -v
 ```
 
 ## Project Structure
@@ -127,6 +199,11 @@ llm/lmstudio_client.py    — LM Studio LLM provider (OpenAI-compatible)
 llm/bedrock_client.py     — AWS Bedrock LLM provider (Claude Sonnet 4.6)
 rag/chain.py               — RAG query pipeline
 rag/prompts.py             — Prompt templates
+api/models.py              — OpenAI-compatible Pydantic schemas
+api/routes.py              — /v1/models and /v1/chat/completions handlers
+api/server.py              — FastAPI app factory, CORS, auth middleware
+run_api.py                 — API server entry point
+launch_openwebui_rag.py    — Start RAG API + Open WebUI together
 ui/app.py                  — Streamlit chat interface
 tests/                     — Unit tests
 ```
